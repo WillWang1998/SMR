@@ -6,6 +6,8 @@ In this project, we implemented the stochastic motion roadmap proposed by Altero
 
 The motion planning problem of a 2D steerable needle is to find a **feasible** **but** **optimal** plan. And, the SMR focus on the uncertainty of control instead of that of sensors, obstacles, or target. To be more specific, in each round of planning, the SMR can help the needle to find the more feasible plan from left-turn and right-turn to avoid collision with obstacles and reach the goal, rather than to find a shorter way to the target. Furthermore, we can simulate the uncertainty of control by giving the parameters in normal distributions. The executed parameters are random ones generated from the distributions. 
 
+Compared with other more complex problems, the needle problem is more suitable for testing the SMR because there are only two action options. The time complexity of the problem is linear correlated to the size of the action set, so the size of 2 can save a lot of time.
+
 Besides, we compared the result of different numbers of sampling states to show that this number is important to the SMR like other probabilistic roadmap methods.
 
 ## The details of your approach and an explanation of how/why this approach solves your problem
@@ -75,7 +77,25 @@ We can perform the uncertainty in aciton using the parameters in normal distribu
 
 
 
+##  Rate the difficulty of each exercise on a scale of 1–10 (1 being trivial, 10 being impossible). Give an estimate of how many hours you spent on each exercise, and detail what was the hardest part of the assignment.
 
+- Prepare for the experiments and read the paper: Scale: 8. Time: 6 hours.
+
+  Difficultes: Some of the details are ambiguous, so cost some time to think about them.
+
+- Code (rw48, Ruijin Wang): Scale: 8. Time: 20 hours.
+
+  Difficultes: The OOP design and computational geometry cost most of the time.
+
+- Conduct experiment: Scale: Time: 
+
+  Difficultes: 
+
+- Analyze: Scale: Time: 
+
+  Difficultes: 
+
+  
 
 
 
