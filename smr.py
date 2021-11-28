@@ -101,12 +101,15 @@ class Problem:
         self.actions = actions
 
         self.nodes = self.sampling()
+        nodes.append(start)
+        nodes.append(goal)
         nodes_for_kd_tree = []
         for node in self.nodes:
             nodes_for_kd_tree.append([node.x, node.y, node.theta, node.theta, node.direction * 10000000000])
             # trick here
         self.kd_tree = KDTree(np.array(nodes_for_kd_tree))
-        self.nodes.append(Sample(math.inf, math.inf, 0, 0))  # obstacle state
+        self.obstacle_node = Sample(math.inf, math.inf, 0, 0)
+        self.nodes.append(self.obstacle_node)  # obstacle state
 
     def clear(self):  # save info for next planning, but delete the solution
         self.solution = Solution()
@@ -165,17 +168,46 @@ class Problem:
         return map_next_node_probability
 
     def build_SMR(self):
-        edges = [[] for i in range(len(self.actions))]
+        edges = [{} for i in range(len(self.actions))]
         for node in self.nodes:
             for i in range(len(self.actions)):
                 transitions = self.get_transitions(node, i, self.actions[i])
                 for next_node, probability in transitions.items():
-                    edges[i].append((node, next_node, probability))
+                    if len(edges[i][node]) == 0:
+                        edges[i][node] = [(next_node, prob)]
+                    else:
+                        edges[i][node].append((next_node, prob))
+                    #edges[i][node].append((node, next_node, probability))
         return [self.nodes, edges]
 
     def run_MDP(self, nodes, edges):
-        # TODO: MDP
-        return {}
+       U1 = dict([(s, 0) for s in nodes])
+        
+        # TODO: parse T & R, define gamma epsilon
+        gamma, epsilon = 0.9, 0.0001
+        while True:
+            action_result = {}
+            U = U1.copy()
+            delta = 0
+            for s in nodes:
+                max_val = -1
+                for a in range(len(self.actions))
+                    tmp_val = 0
+                    if len(edges[a][s]) > 0:
+                        for (s1, p) in edges[a][s]:
+                            tmp_val += p * U[s1]
+                    if tmp_val > max_val:
+                        max_val = tmp_val
+                        action_result[s] = self.actions[a]
+                reward_val = 0
+                if s == self.goal:
+                    reward_val = 1
+                else if s == self.obstacle_node:
+                    reward_val = -1
+                U1[s] = reward_val + gamma * max_val
+                delta = max(delta, abs(U1[s] - U[s]))
+            if delta < epsilon * (1 - gamma) / gamma:
+                return action_result
 
     def solve(self):
         nodes, edges = self.build_SMR()
