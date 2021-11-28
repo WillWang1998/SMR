@@ -1,6 +1,6 @@
 import math
 import numpy as np
-from computational_geometry import Polygon, Point, Arc, distance_for_collision_checking
+from computational_geometry import Polygon, Point, Arc, distance_for_collision_checking, Segment
 from sklearn.neighbors import KDTree
 
 
@@ -101,8 +101,8 @@ class Problem:
         self.actions = actions
 
         self.nodes = self.sampling()
-        nodes.append(start)
-        nodes.append(goal)
+        # self.nodes.append(start)
+        # self.nodes.append(goal)
         nodes_for_kd_tree = []
         for node in self.nodes:
             nodes_for_kd_tree.append([node.x, node.y, node.theta, node.theta, node.direction * 10000000000])
@@ -125,12 +125,26 @@ class Problem:
                                                node.get_point_in_geometry()) <= self.t
 
     def check_collision_for_sample(self, sample: Sample):
+        if sample.x >= self.x_limit or sample.y >= self.y_limit:
+            return True
         for obstacle in self.obstacles:
             if obstacle.contains(sample.get_point_in_geometry()):
                 return True
         return False
 
     def check_collision_for_trajectory(self, trajectory: Arc):
+        s0 = Segment(Point(0, 0), Point(0, self.y_limit))
+        if s0.has_intersect_point_with_arc(trajectory):
+            return True
+        s1 = Segment(Point(0, self.y_limit), Point(self.x_limit, self.y_limit))
+        if s1.has_intersect_point_with_arc(trajectory):
+            return True
+        s2 = Segment(Point(self.x_limit, self.y_limit), Point(self.x_limit, 0))
+        if s2.has_intersect_point_with_arc(trajectory):
+            return True
+        s3 = Segment(Point(self.x_limit, 0), Point(0, 0))
+        if s3.has_intersect_point_with_arc(trajectory):
+            return True
         for obstacle in self.obstacles:
             if obstacle.intersect_with_arc(trajectory):
                 return True
@@ -174,40 +188,35 @@ class Problem:
                 transitions = self.get_transitions(node, i, self.actions[i])
                 for next_node, probability in transitions.items():
                     if len(edges[i][node]) == 0:
-                        edges[i][node] = [(next_node, prob)]
+                        edges[i][node] = [(next_node, probability)]
                     else:
-                        edges[i][node].append((next_node, prob))
+                        edges[i][node].append((next_node, probability))
                     #edges[i][node].append((node, next_node, probability))
         return [self.nodes, edges]
 
     def run_MDP(self, nodes, edges):
-       U1 = dict([(s, 0) for s in nodes])
-        
-        # TODO: parse T & R, define gamma epsilon
-        gamma, epsilon = 0.9, 0.0001
-        while True:
-            action_result = {}
-            U = U1.copy()
+        u1 = dict([(s, 0) for s in nodes])
+        action_result = {}
+        for s in nodes:
+            if self.in_goal_range(s):
+                u1[s] = 1
+        delta, gamma, epsilon = 1, 0.001, 0.001
+        while delta > epsilon:
+            u = u1.copy()
             delta = 0
             for s in nodes:
                 max_val = -1
-                for a in range(len(self.actions))
+                for a in range(len(self.actions)):
                     tmp_val = 0
                     if len(edges[a][s]) > 0:
-                        for (s1, p) in edges[a][s]:
-                            tmp_val += p * U[s1]
+                        for (t, p) in edges[a][s]:
+                            tmp_val += p * (-gamma + u[t])
                     if tmp_val > max_val:
                         max_val = tmp_val
                         action_result[s] = self.actions[a]
-                reward_val = 0
-                if s == self.goal:
-                    reward_val = 1
-                else if s == self.obstacle_node:
-                    reward_val = -1
-                U1[s] = reward_val + gamma * max_val
-                delta = max(delta, abs(U1[s] - U[s]))
-            if delta < epsilon * (1 - gamma) / gamma:
-                return action_result
+                u1[s] = max_val
+                delta = max(delta, abs(u1[s] - u[s]))
+            return action_result
 
     def solve(self):
         nodes, edges = self.build_SMR()
