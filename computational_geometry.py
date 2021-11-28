@@ -18,6 +18,9 @@ class Point:
     def __truediv__(self, number):
         return Point(self.x / number, self.y / number)
 
+    def __eq__(self, other):
+        return self.x == other.x and self.y == other.y
+
     def rotate(self, angle):
         return Point(self.x * math.cos(angle) - self.y * math.sin(angle),
                      self.y * math.cos(angle) + self.x * math.sin(angle))
@@ -72,11 +75,22 @@ class Segment:
                 b = self.point_a.y - k * self.point_a.x
                 x = - b / k
                 if x > point.x:
-                    return True
+                    # FIX: two intersections in one point
+                    y = k * x + b
+                    if Point(x, y) == self.point_a:
+                        return False
+                    else:
+                        return True
                 else:
                     return False
             else:
-                return self.point_a.x > point.x
+                if self.point_a.x >= point.x:
+                    if self.point_a.y == 0:
+                        return False
+                    else:
+                        return True
+                else:
+                    return False
 
     def point_on_segment(self, point: Point) -> bool:  # The point is on the line
         min_x = min(self.point_a.x, self.point_b.x)
