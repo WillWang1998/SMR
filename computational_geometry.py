@@ -7,10 +7,10 @@ class Point:
         self.y = y
 
     def __add__(self, other):
-        return Point((self.x + other.x), (self.x + other.y))
+        return Point((self.x + other.x), (self.y + other.y))
 
     def __sub__(self, other):
-        return Point((self.x - other.x), (self.x - other.y))
+        return Point((self.x - other.x), (self.y - other.y))
 
     def __mul__(self, number):
         return Point(self.x * number, self.y * number)
@@ -20,6 +20,9 @@ class Point:
 
     def __eq__(self, other):
         return self.x == other.x and self.y == other.y
+
+    def __str__(self):
+        return "({}, {})".format(self.x, self.y)
 
     def rotate(self, angle):
         return Point(self.x * math.cos(angle) - self.y * math.sin(angle),
@@ -31,20 +34,29 @@ class Arc:
         self.point_a = point_a
         self.direction = direction
         self.r = r
+
         if direction == 0:
             self.center = Point(point_a.x - r * math.sin(theta), point_a.y + r * math.cos(theta))
             point_a_relatively = self.point_a - self.center
+            self.delta_theta = delta / r
             point_b_relatively = point_a_relatively.rotate(delta / r)
+            # print("point_b_relatively: ", point_b_relatively)
+            # print("self.center: ", self.center)
             self.point_b = point_b_relatively + self.center
             self.degree_a = (theta - math.pi / 2) % (2 * math.pi)
             self.degree_b = (delta / r + theta - math.pi / 2) % (2 * math.pi)
         else:
             self.center = Point(point_a.x + r * math.sin(theta), point_a.y - r * math.cos(theta))
             point_a_relatively = self.point_a - self.center
+            self.delta_theta = -delta / r
             point_b_relatively = point_a_relatively.rotate(-delta / r)
+            # print("point_b_relatively: ", point_b_relatively)
+            # print("self.center: ", self.center)
             self.point_b = point_b_relatively + self.center
             self.degree_a = (theta + math.pi / 2) % (2 * math.pi)
             self.degree_b = (- delta / r + theta + math.pi / 2) % (2 * math.pi)
+
+        # print("self.point_b: ", self.point_b)
 
     def point_on_arc(self, point: Point) -> bool:  # The point is on the circle
         point_relatively = point - self.center
@@ -53,10 +65,16 @@ class Arc:
         else:
             degree = math.acos(point_relatively.x / self.r)
 
-        if self.degree_a < self.degree_b:
-            return self.degree_a <= degree <= self.degree_b
+        if self.direction == 0:
+            if self.degree_a < self.degree_b:
+                return self.degree_a <= degree <= self.degree_b
+            else:
+                return self.degree_a <= degree or degree <= self.degree_b
         else:
-            return self.degree_a <= degree or degree <= self.degree_b
+            if self.degree_a < self.degree_b:
+                return not self.degree_a <= degree <= self.degree_b
+            else:
+                return not (self.degree_a <= degree or degree <= self.degree_b)
 
 
 class Segment:
@@ -64,33 +82,29 @@ class Segment:
         self.point_a = point_a
         self.point_b = point_b
 
-    def has_intersect_point_with_right_forward_ray_from_point(self, point: Point) -> bool:
+    def has_intersect_point_with_right_forward_ray_from_point(self, point: Point) -> int:
         min_y = min(self.point_a.y, self.point_b.y)
         max_y = max(self.point_a.y, self.point_b.y)
-        if max_y < 0 or min_y > 0:
-            return False
+        if max_y < point.y or min_y > point.y:
+            return 0
         else:
             if self.point_a.x - self.point_b.x != 0:
                 k = (self.point_a.y - self.point_b.y) / (self.point_a.x - self.point_b.x)
                 b = self.point_a.y - k * self.point_a.x
-                x = - b / k
-                if x > point.x:
-                    # FIX: two intersections in one point
-                    y = k * x + b
-                    if Point(x, y) == self.point_a:
-                        return False
+                if k != 0:
+                    x = (point.y - b) / k
+                    if x >= point.x:
+                        return 1
                     else:
-                        return True
+                        return 0
                 else:
-                    return False
+                    if self.point_a.y == point.y and max(self.point_a.x, self.point_b.x) >= point.x:
+                        return -1
             else:
                 if self.point_a.x >= point.x:
-                    if self.point_a.y == 0:
-                        return False
-                    else:
-                        return True
+                    return 1
                 else:
-                    return False
+                    return 0
 
     def point_on_segment(self, point: Point) -> bool:  # The point is on the line
         min_x = min(self.point_a.x, self.point_b.x)
@@ -152,8 +166,8 @@ class Polygon:
     def contains(self, point: Point) -> bool:
         intersect_cnt = 0
         for segment in self.segments:
-            if segment.has_intersect_point_with_right_forward_ray_from_point(point):
-                intersect_cnt += 1
+            intersect_cnt += segment.has_intersect_point_with_right_forward_ray_from_point(point)
+            intersect_cnt -= point == segment.point_a
         return intersect_cnt % 2 != 0
 
 

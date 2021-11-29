@@ -12,8 +12,11 @@ class Action:
         self.r_standard_deviation = r_standard_deviation
 
     def sample(self):
-        delta = np.random.normal(self.delta_average, self.delta_standard_deviation)
         r = np.random.normal(self.r_average, self.r_standard_deviation)
+        delta = np.random.normal(self.delta_average, self.delta_standard_deviation)
+        while r < 0 or delta < 0:  # It's wrong here, but the paper does not give any solution for the negative value...
+            r = np.random.normal(self.r_average, self.r_standard_deviation)
+            delta = np.random.normal(self.delta_average, self.delta_standard_deviation)
         return [delta, r]
 
 
@@ -34,7 +37,12 @@ class Sample:
                self.direction == other.direction
 
     def __hash__(self):
-        return str(self)
+        s = str(self)
+        val = 0
+        for c in s:
+            val *= 128
+            val += ord(c)
+        return val
 
     def get_point_in_geometry(self):
         return Point(self.x, self.y)
@@ -42,10 +50,10 @@ class Sample:
     def perform_action(self, action_type: int, action: Action):  # GenerateSampleTransition
         point = self.get_point_in_geometry()
         delta, r = action.sample()
-        arc = Arc(point, self.theta, r, delta, self.direction)
-
+        arc = Arc(point, self.theta, r, delta, action_type)
         next_x = arc.point_b.x
         next_y = arc.point_b.y
+        # print("next_x: ", next_x, "next_y: ", next_y)
         if action_type == 0:
             next_theta = (self.theta + delta / r) % (2 * math.pi)
         else:
@@ -73,6 +81,12 @@ def distance_for_sample(sample_a: Sample, sample_b: Sample) -> float:
 
 class Solution:
     def __init__(self):
+        self.samples = []
+        self.actions = []
+        self.trajectories = []
+        self.successful = True
+
+    def clear(self):
         self.samples = []
         self.actions = []
         self.trajectories = []
@@ -110,6 +124,10 @@ class Problem:
         self.kd_tree = KDTree(np.array(nodes_for_kd_tree))
         self.obstacle_node = Sample(math.inf, math.inf, 0, 0)
         self.nodes.append(self.obstacle_node)  # obstacle state
+        self.edges = [[{} for node_index in range(len(self.nodes))] for i in range(len(self.actions))]
+        self.best_action = {}
+        self.build_SMR()
+        self.run_MDP()
 
     def clear(self):  # save info for next planning, but delete the solution
         self.solution = Solution()
@@ -125,7 +143,7 @@ class Problem:
                                                node.get_point_in_geometry()) <= self.t
 
     def check_collision_for_sample(self, sample: Sample):
-        if sample.x >= self.x_limit or sample.y >= self.y_limit:
+        if sample.x <= 0 or sample.y <= 0 or sample.x >= self.x_limit or sample.y >= self.y_limit:
             return True
         for obstacle in self.obstacles:
             if obstacle.contains(sample.get_point_in_geometry()):
@@ -159,82 +177,78 @@ class Problem:
             new_coord[2] *= 2 * math.pi
             new_coord[3] = math.floor(2 * new_coord[3])
             sample = Sample(new_coord[0], new_coord[1], new_coord[2], new_coord[3])
-            if self.check_collision_for_sample(sample):
+            if not self.check_collision_for_sample(sample):
                 nodes.append(sample)
+                # print("node ", len(nodes) - 1, ": ", sample)
         return nodes
 
-    def get_transitions(self, node: Sample, action_type: int, action: Action):
+    def get_transitions(self, node_index: int, action_type: int, action: Action):
         map_next_node_probability = dict()
         for i in range(self.number_of_sample_per_transition):
-            next_sample, trajectory = node.perform_action(action_type, action)
+            next_sample, trajectory = self.nodes[node_index].perform_action(action_type, action)
             if self.check_collision_for_sample(next_sample) or self.check_collision_for_trajectory(trajectory):
-                nearest_sample = self.nodes[-1]
+                nearest_sample_index = len(self.nodes) - 1
             else:
-                nearest_sample = convert_sample_from_kd_tree_to_problem(
-                    self.nodes[self.kd_tree.query(
-                        [convert_sample_from_problem_to_kd_tree(next_sample)]
-                    )[1]]
-                )  # get from kd-tree
-            if nearest_sample in map_next_node_probability:
-                map_next_node_probability[nearest_sample] += 1 / self.number_of_sample_per_transition
+                # print("convert_sample_from_problem_to_kd_tree(next_sample):",
+                #       convert_sample_from_problem_to_kd_tree(next_sample))
+                # print("self.kd_tree.query([convert_sample_from_problem_to_kd_tree(next_sample)]):",
+                #       self.kd_tree.query([convert_sample_from_problem_to_kd_tree(next_sample)]))
+                # print("convert_sample_from_problem_to_kd_tree(next_sample): ",
+                #       convert_sample_from_problem_to_kd_tree(next_sample))
+                nearest_sample_index = self.kd_tree.query([convert_sample_from_problem_to_kd_tree(next_sample)])[1][0][0]
+                # print("nearest_sample_index", nearest_sample_index)
+            if nearest_sample_index in map_next_node_probability:
+                map_next_node_probability[nearest_sample_index] += 1 / self.number_of_sample_per_transition
             else:
-                map_next_node_probability[nearest_sample] = 1 / self.number_of_sample_per_transition
+                map_next_node_probability[nearest_sample_index] = 1 / self.number_of_sample_per_transition
         return map_next_node_probability
 
     def build_SMR(self):
-        edges = [{} for i in range(len(self.actions))]
-        for node in self.nodes:
+        for node_index in range(len(self.nodes) - 1):
             for i in range(len(self.actions)):
-                transitions = self.get_transitions(node, i, self.actions[i])
-                for next_node, probability in transitions.items():
-                    if len(edges[i][node]) == 0:
-                        edges[i][node] = [(next_node, probability)]
-                    else:
-                        edges[i][node].append((next_node, probability))
-                    #edges[i][node].append((node, next_node, probability))
-        return [self.nodes, edges]
+                transitions = self.get_transitions(node_index, i, self.actions[i])
+                self.edges[i][node_index] = transitions
 
-    def run_MDP(self, nodes, edges):
-        u1 = dict([(s, 0) for s in nodes])
-        action_result = {}
-        for s in nodes:
-            if self.in_goal_range(s):
+    def run_MDP(self):
+        u1 = dict([(s, 0) for s in range(len(self.nodes))])
+        for s in range(len(self.nodes)):
+            if self.in_goal_range(self.nodes[s]):
                 u1[s] = 1
-        delta, gamma, epsilon = 1, 0.001, 0.001
+        delta, gamma, epsilon = 1, 0.00001, 0.001
         while delta > epsilon:
             u = u1.copy()
             delta = 0
-            for s in nodes:
+            for s in range(len(self.nodes)):
                 max_val = -1
                 for a in range(len(self.actions)):
                     tmp_val = 0
-                    if len(edges[a][s]) > 0:
-                        for (t, p) in edges[a][s]:
+                    if len(self.edges[a][s]) > 0:
+                        for (t, p) in self.edges[a][s].items():
                             tmp_val += p * (-gamma + u[t])
                     if tmp_val > max_val:
                         max_val = tmp_val
-                        action_result[s] = self.actions[a]
+                        self.best_action[s] = a
                 u1[s] = max_val
                 delta = max(delta, abs(u1[s] - u[s]))
-            return action_result
 
     def solve(self):
-        nodes, edges = self.build_SMR()
-        map_node_action = self.run_MDP(nodes, edges)
+        # for node, action in self.best_action.items():
+        #     print("node: ", node, "action: ", action)
+        self.solution.clear()
+        self.solution.samples.append(self.start)
         while not self.in_goal_range(self.solution.samples[-1]):
             cur_sample = self.solution.samples[-1]
-            nearest_sample = convert_sample_from_kd_tree_to_problem(
-                self.nodes[self.kd_tree.query(
-                    [convert_sample_from_problem_to_kd_tree(cur_sample)]
-                )[1]]
-            )
+            nearest_sample_index = self.kd_tree.query([convert_sample_from_problem_to_kd_tree(cur_sample)])[1][0][0]
 
-            best_action = map_node_action[nearest_sample]
-            next_sample, trajectory = cur_sample.perform_action(best_action)
+            best_action = self.actions[self.best_action[nearest_sample_index]]
+            next_sample, trajectory = cur_sample.perform_action(self.best_action[nearest_sample_index], best_action)
             self.solution.samples.append(next_sample)
-            self.solution.actions.append(best_action)
+            self.solution.actions.append(self.best_action[nearest_sample_index])
             self.solution.trajectories.append(trajectory)
             if self.check_collision_for_sample(next_sample) or self.check_collision_for_trajectory(trajectory):
                 self.solution.successful = False
                 break
+            if self.in_goal_range(next_sample):
+                break
+
         return self.solution

@@ -1,10 +1,10 @@
 import copy
 import math
+import os
 
-import matplotlib
+import numpy as np
 
 import smr
-import numpy
 import matplotlib.pyplot as plt
 from matplotlib.path import Path
 import matplotlib.patches as patches
@@ -17,12 +17,12 @@ if __name__ == '__main__':
     print("Number of tests?")
     number_of_tests = int(input())
 
-    obs_list = [[(0.0, 4.0), (3.0, 4.0), (3.0, 6.0), (0.0, 6.0)], [(4.0, 4.0), (4.0, 6.0), (5.0, 6.0), (5.0, 4.0)]]
-    st_sample = smr.Sample(2.0, 2.0, 0, 0)
-    ed_sample = smr.Sample(2.0, 8.0, 0, 0)
+    obs_list = [[(0.0, 4.0), (3.0, 4.0), (3.0, 6.0), (0.0, 6.0)], [(4.0, 4.0), (5.0, 4.0), (5.0, 6.0), (4.0, 6.0)]]
+    st_sample = smr.Sample(3.0, 2.0, 0, 0)
+    ed_sample = smr.Sample(3.0, 8.0, 0, 0)
     actions = [
-        smr.Action(0.5, 2.5, 0.1, 0.5),
-        smr.Action(0.5, 2.5, 0.2, 1.0)
+        smr.Action(0.5, 3, 0.2, 0.5),
+        smr.Action(0.5, 3, 0.1, 1.0)
     ]
 
     problem = smr.Problem(obs_list, st_sample, ed_sample, 1,
@@ -30,14 +30,21 @@ if __name__ == '__main__':
 
     successful_times = 0
     for _ in range(number_of_tests):
-        problem.clear()
         solution = problem.solve()
         trajectories = solution.trajectories
+        # for trajectory in trajectories:
+        #     print("center {}".format(trajectory.center))
+        #     print("form {} to {}".format(trajectory.point_a, trajectory.point_b))
+        # for action in solution.actions:
+        #     print("action: {}".format(action))
+        # for sample in solution.samples:
+        #     print("sample: {}".format(sample))
 
         fig = plt.figure()
         ax = fig.gca()
         ax.set_xlim(0, 10)
         ax.set_ylim(0, 10)
+
         for obs in obs_list:
             temp = copy.deepcopy(obs)
             temp.append(temp[0])
@@ -46,10 +53,39 @@ if __name__ == '__main__':
             obs_patch = patches.PathPatch(obs_path)
             ax.add_patch(obs_patch)
 
+        data = []
+        plot_arc = patches.Arc((3, 8), 2, 2, 0,
+                               0, 360)
+        ax.add_patch(plot_arc)
+        index = 0
         for trajectory in trajectories:
-            plot_arc = patches.Arc((trajectory.center.x, trajectory.center.x), trajectory.r, trajectory.r, 0,
-                                   trajectory.degree_a * 360 / 2 * math.pi, trajectory.degree_b * 360 / 2 * math.pi)
+            # data.append([trajectory.point_a.x, trajectory.point_a.y])
+            # plt.plot(trajectory.point_a.x, trajectory.point_a.y, 'ro')
+            # print("(trajectory.center.x, trajectory.center.y), trajectory.r, trajectory.r, 0,"
+            #       "trajectory.degree_a * 360 / (2 * math.pi), trajectory.degree_b * 360 / (2 * math.pi),",
+            #       "trajectory.delta_theta",
+            #       (trajectory.center.x, trajectory.center.y), trajectory.r, trajectory.r, 0,
+            #       trajectory.degree_a * 360 / (2 * math.pi), trajectory.degree_b * 360 / (2 * math.pi),
+            #       trajectory.delta_theta
+            #       )
+            degree_a = trajectory.degree_a * 360 / (2 * math.pi)
+            degree_b = trajectory.degree_b * 360 / (2 * math.pi)
+            if solution.actions[index] == 1:
+                degree_a, degree_b = degree_b, degree_a
+            plot_arc = patches.Arc((trajectory.center.x, trajectory.center.y), 2 * trajectory.r, 2 * trajectory.r, 0,
+                                   degree_a, degree_b)
+            ax.add_patch(plot_arc)
+            index += 1
 
-        if solution.success:
+        # data = np.array(data)
+        # ax.plot(data[:, 0], data[:, 1], '.-')
+        file_path = os.path.dirname(os.path.abspath(__file__))
+        plt.savefig(file_path + "/picture/{}.png".format(_))
+        plt.clf()
+
+        if solution.successful:
             successful_times += 1
+            print("Test: ", _, "successful")
+        else:
+            print("Test: ", _, "failed")
     # TODO: record probability of success
