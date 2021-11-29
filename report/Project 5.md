@@ -18,7 +18,7 @@ We didn't use the OMPL library for our experiments since we planned only to appl
 
 - For each sample on the 2D graph, draw a ray from the point to any direction. If the number of intersections between the ray and the obstacle is odd, the point is in an obstacle, otherwise outside of it. 
 
-- Given the current sample $S$, rotation trajectory length $\delta$, the rotation radius $r$, and the direction $d$, we can calculte the center $O$ of this rotation and the angle $\theta$ Of this rotation.
+- Given the current sample $S$, rotation trajectory length $\delta$, the rotation radius $r$, and the direction $d$, we can calculate the center $O$ of this rotation and the angle $\theta$ Of this rotation.
 
   if d is 0 (turn left), 
   $$
@@ -61,7 +61,7 @@ Second, for each sample and action, get the probability of the transition from t
 
 #### MDP
 
-Use dynamic programing to calulate the best action $u_i$ to make the probability $p_i$ of each node higher. Iterate the procese until the probability of each node is stable.
+Use dynamic programing to calculate the best action $u_i$ to make the probability $p_i$ of each node higher. Iterate the process until the probability of each node is converged.
 $$
 p_i = max_{u_i}\sum_{j \in V}P_{u_i, i, j}(g(i, u_i, j) + p_j)
 $$
@@ -69,21 +69,43 @@ where $i$, $j$ are all nodes in the graph, and $g(i, u_i, j) = 0.00001$. $g(i, u
 
 Then, get the best action for each nodes and their own neighbor area. 
 
+<img src="./MDP.png" alt="Simulation" style="zoom:50%;" />
+
 #### Simulation
 
 Perform the uncertainty in action using the parameters in a normal distribution. The real movement of the robot is not performed during building the SMR. The SMR can give the best action for current state.
 
 <img src="./Simulation.png" alt="Simulation" style="zoom:25%;" />
 
-### Data Vizualization
+### Data Visualization
 
-Use Matplotlib to draw the imges.
+Use Matplotlib to draw the images. The arc and polygon function is called to draw the path and obstacles in the solution. The eclipse surrounding the goal is the area could treat the path is successful when car moves inside.
 
-## A description of the experiments you conducted. Be precise about any assumptions you make on the robot or its environment.
+<img src="./DataVis.png" alt="Simulation" style="zoom:50%;" />
 
+## Experiments & Quantitative and Qualitative analysis
 
+### Part 1
 
-## A quantitative and qualitative analysis of your approach using the experiments you conduct.
+1. The path varies when we do multiple times of simulation.
+
+2. The system sometimes reaches the goal, but sometimes not. The success ratio is varied when we apply different conditions to the parameters. Here are examples of different paths   completed or failed:
+
+   <img src="./p1.png" alt="Simulation" style="zoom:50%;" />
+
+3. Sensitivity of probability of success to the standard deviation of the Gaussian noise distribution:
+
+   In the paper, the standard deviation is chosen by 0.2% of average value. Here we tested standard deviation by 0.4%, 0.2%, and 0.1% of average value of average. With both 2 dimension in the control space.
+
+   The experiment code is expe1 function in the code.
+
+   The success ratio result is 0, 2.9% and 84.1% (we run multiple times, results could be extremely unstable here due to the quality of sample points). We can see the Sensitivity is pretty high for the probability of success to the standard deviation.
+
+### Part 2
+
+The difference of success probability when number of samples change:  
+
+Here we use  n=1000, 3000, 10000, 30000 to run the experiment, the experiment parameter is expe2 function in the code. The 4 corresponding results are as follows: 0, 0, 84.1%, 92,3%. We can hardly see relationships here. But it's like the logarithmic relationship between success probability and sample numbers.
 
 
 
@@ -97,17 +119,7 @@ Use Matplotlib to draw the imges.
 
   Difficultes: The OOP design and computational geometry cost most of the time.
 
-- Conduct experiment: Scale: Time: 
+- Conduct experiment & Analyze: Scale: 10 Time: 20 hours
 
-  Difficultes: The parameters need to be fixed to generate better results.
-
-- Analyze: Scale: Time: 
-
-  Difficultes: 
-
-  
-
-
-
-
+  Difficultes: The parameters need fine-tuning for better results. A set of comparision experiments should perform different conclusions made in the task.
 

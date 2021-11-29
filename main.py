@@ -9,6 +9,53 @@ import matplotlib.pyplot as plt
 from matplotlib.path import Path
 import matplotlib.patches as patches
 
+def expe1():
+    number_of_nodes = 10000
+    number_of_samples_to_gen_per_transition = 20
+    number_of_tests = 1000
+    obs_list = [[(0.0, 4.0), (1.5, 4.0), (2.0, 5.0), (1.5, 6.0), (0.0, 6.0)],
+                [(3.5, 4.0), (5.0, 4.0), (5.0, 6.0), (3.5, 6.0), (4.0, 5.0)]]
+    st_sample = smr.Sample(0.0, 2.0, 0, 0)
+    ed_sample = smr.Sample(1.0, 8.0, 0, 0)
+    actions = [
+        smr.Action(0.8, 3.0, 0.08, 0.030), # average and standard deviation
+        smr.Action(0.4, 3.0, 0.04, 0.030)
+    ]
+
+    problem = smr.Problem(obs_list, st_sample, ed_sample, 1,
+                          number_of_nodes, number_of_samples_to_gen_per_transition, 8, 10, actions)
+
+    successful_times = 0
+    for _ in range(number_of_tests):
+        solution = problem.solve()
+        if solution.successful:
+            successful_times += 1
+    print("Success count: ", successful_times)
+
+def expe2():
+    number_of_nodes = [1000, 3000, 10000, 30000]
+    number_of_samples_to_gen_per_transition = 20
+    number_of_tests = 1000
+    obs_list = [[(0.0, 4.0), (1.5, 4.0), (2.0, 5.0), (1.5, 6.0), (0.0, 6.0)],
+                [(3.5, 4.0), (5.0, 4.0), (5.0, 6.0), (3.5, 6.0), (4.0, 5.0)]]
+    st_sample = smr.Sample(0.0, 2.0, 0, 0)
+    ed_sample = smr.Sample(1.0, 8.0, 0, 0)
+    actions = [
+        smr.Action(0.8, 3.0, 0.08, 0.030), # average and standard deviation
+        smr.Action(0.4, 3.0, 0.04, 0.030)
+    ]
+
+    for j in number_of_nodes:
+        problem = smr.Problem(obs_list, st_sample, ed_sample, 1,
+                              j, number_of_samples_to_gen_per_transition, 8, 10, actions)
+
+        successful_times = 0
+        for _ in range(number_of_tests):
+            solution = problem.solve()
+            if solution.successful:
+                successful_times += 1
+        print("Success count: ", successful_times)
+
 if __name__ == '__main__':
     print("Number of nodes?")  # Number of states
     number_of_nodes = int(input())
@@ -17,20 +64,23 @@ if __name__ == '__main__':
     print("Number of tests?")
     number_of_tests = int(input())
 
-    obs_list = [[(0.0, 4.0), (3.0, 4.0), (3.0, 6.0), (0.0, 6.0)], [(4.0, 4.0), (5.0, 4.0), (5.0, 6.0), (4.0, 6.0)]]
-    st_sample = smr.Sample(3.0, 2.0, 0, 0)
-    ed_sample = smr.Sample(3.0, 8.0, 0, 0)
+    obs_list = [[(0.0, 4.0), (1.5, 4.0), (2.0, 5.0), (1.5, 6.0), (0.0, 6.0)], [(3.5, 4.0), (5.0, 4.0), (5.0, 6.0), (3.5, 6.0), (4.0, 5.0)]]
+    st_sample = smr.Sample(0.0, 2.0, 0, 0)
+    ed_sample = smr.Sample(1.0, 8.0, 0, 0)
     actions = [
-        smr.Action(0.5, 3, 0.2, 0.5),
-        smr.Action(0.5, 3, 0.1, 1.0)
+        smr.Action(0.8, 3.0, 0.01, 0.010),
+        smr.Action(0.4, 3.0, 0.01, 0.010)
     ]
 
     problem = smr.Problem(obs_list, st_sample, ed_sample, 1,
-                          number_of_nodes, number_of_samples_to_gen_per_transition, 10, 10, actions)
+                          number_of_nodes, number_of_samples_to_gen_per_transition, 8, 10, actions)
 
     successful_times = 0
     for _ in range(number_of_tests):
         solution = problem.solve()
+        if solution.successful:
+            successful_times += 1
+        continue
         trajectories = solution.trajectories
         # for trajectory in trajectories:
         #     print("center {}".format(trajectory.center))
@@ -54,7 +104,7 @@ if __name__ == '__main__':
             ax.add_patch(obs_patch)
 
         data = []
-        plot_arc = patches.Arc((3, 8), 2, 2, 0,
+        plot_arc = patches.Arc((1, 8), 2, 2, 0,
                                0, 360)
         ax.add_patch(plot_arc)
         index = 0
@@ -89,3 +139,4 @@ if __name__ == '__main__':
         else:
             print("Test: ", _, "failed")
     # TODO: record probability of success
+    print("Success count: ", successful_times)
