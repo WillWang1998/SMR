@@ -14,10 +14,6 @@ Besides, we compared the result of different numbers of sampling states to show 
 
 We didn't use the OMPL library for our experiments since we planned only to apply the SMR to this needle problem.
 
-Firstly, Ruijin Wang implemented some functions for collision checking and most of the SMR except the MDP.
-
-Secondly, Jiawei Bao implemented the MDP and the data visualization part.
-
 ### Collision checking
 
 - For each sample on the 2D graph, draw a ray from the point to any direction. If the number of intersections between the ray and the obstacle is odd, the point is in an obstacle, otherwise outside of it. 
@@ -32,6 +28,14 @@ Secondly, Jiawei Bao implemented the MDP and the data visualization part.
   -sin\frac{\delta}{r} & cos\frac{\delta}{r}
   \end{array}\right)
   $$
+  if d is 1 (turn right), 
+  $$
+  O = (x_s + r *  sin \theta, y_s - r * cos \theta)  \\
+  Rotate(S, O, \delta, r) = O + (S - O) * \left(\begin{array}{cc} 
+  cos\frac{-\delta}{r} & sin\frac{-\delta}{r}\\
+  -sin\frac{-\delta}{r} & cos\frac{-\delta}{r}
+  \end{array}\right)
+  $$
   
 - For each arc trajectory, judge if there is an intersection between the trajectory and any side of an obstacle. In order to do this, calculate the intersections of the circle where the arc is on and the line which the segment is on. Then, judge if these intersections are in the segment and the arc.
 
@@ -39,35 +43,41 @@ Secondly, Jiawei Bao implemented the MDP and the data visualization part.
 
 The details are illustrated with following charts.
 
+The SMR is composed of two parts, the samples, and the chosen action. The algorithm uses samples to generalize all the samples in the neighbor area and give the best action of this area. 
+
 #### The Overview
 
 <img src="./SMR.png" alt="SMR" style="zoom: 25%;" />
 
 #### How to Build SMR
 
-First, generate the state the samples for the SMR.
+First, generate the state the samples for the SMR. Each sample represents all the states in the neighbor area.
 
 <img src="./Sampling.png" alt="Sampling" style="zoom:25%;" />
 
-Second, for each sample and action, get the probability of the transition from this to another sample using this action. Repeat $m$ times of transition to get more accurate estimation. Then, give a graph.
+Second, for each sample and action, get the probability of the transition from this to another sample using this action. Repeat $m$ times of transition to get more accurate estimation. Then, give a graph which is used to do the MDP.
 
 <img src="./Get Transection.png" alt="Get Transection" style="zoom:25%;" />
 
 #### MDP
 
-Use the MDP to calculate the SMR.
+Use dynamic programing to calulate the best action $u_i$ to make the probability $p_i$ of each node higher. Iterate the procese until the probability of each node is stable.
+$$
+p_i = max_{u_i}\sum_{j \in V}P_{u_i, i, j}(g(i, u_i, j) + p_j)
+$$
+where $i$, $j$ are all nodes in the graph, and $g(i, u_i, j) = 0.00001$. $g(i, u_i, j)$ is set to a small number to avoid the circle in the calculation.
 
-==(You can draw some flowchart to illustrate it.)==
+Then, get the best action for each nodes and their own neighbor area. 
 
 #### Simulation
 
-We can perform the uncertainty in aciton using the parameters in normal distribution. The real movement of the robot is not precisely performed during building the SMR. So, the real movement of the robot is uncertain, and the SMR can help the robot to overcome the uncertainty. 
+Perform the uncertainty in action using the parameters in a normal distribution. The real movement of the robot is not performed during building the SMR. The SMR can give the best action for current state.
 
 <img src="./Simulation.png" alt="Simulation" style="zoom:25%;" />
 
 ### Data Vizualization
 
-==(The package you use...)==
+Use Matplotlib to draw the imges.
 
 ## A description of the experiments you conducted. Be precise about any assumptions you make on the robot or its environment.
 
@@ -83,13 +93,13 @@ We can perform the uncertainty in aciton using the parameters in normal distribu
 
   Difficultes: Some of the details are ambiguous, so cost some time to think about them.
 
-- Code (rw48, Ruijin Wang): Scale: 8. Time: 20 hours.
+- Code: Scale: 10. Time: 30 hours.
 
   Difficultes: The OOP design and computational geometry cost most of the time.
 
 - Conduct experiment: Scale: Time: 
 
-  Difficultes: 
+  Difficultes: The parameters need to be fixed to generate better results.
 
 - Analyze: Scale: Time: 
 
