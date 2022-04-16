@@ -4,4 +4,6 @@ This repo is to implement the papar *The Stochastic Motion Roadmap: A Sampling F
 
 https://goldberg.berkeley.edu/pubs/rss-Alterovitz2007_RSS.pdf
 
-install matplotlib, numpy, and scipy-learn with pip
+It may have some bugs.
+
+To run, install matplotlib, numpy, and scipy-learn with pip.
